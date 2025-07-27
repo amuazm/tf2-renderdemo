@@ -7,7 +7,7 @@ This is a fork of [jooonior/tf2-renderdemo](https://github.com/jooonior/tf2-rend
 2. `git clone https://github.com/amuazm/tf2-renderdemo.git`
 3. Open `RenderDemo/RenderDemo.sln` with Visual Studio
 4. Select `Debug` in the top if not already selected
-5. `CTRL + B`
+5. Build it (`CTRL + B`)
 6. Copy the folder `RenderDemo/config` as `RenderDemo/bin/Debug/config`
 7. Open a terminal in `RenderDemo/bin/Debug`
 8. Run your command (example below)

@@ -210,15 +210,10 @@ namespace RenderDemo
 			if (!Directory.Exists(sdrDirectory))
 				throw new InvalidInputException($"Invalid -sdrdir value: Couldn't find '{sdrDirectory}'.");
 
-			// Does LauncherCLI.exe exist?
-			var launcher = Path.Combine(sdrDirectory, "LauncherCLI.exe");
+			// Does svr_launcher64.exe exist?
+			var launcher = Path.Combine(sdrDirectory, "svr_launcher64.exe");
 			if (!File.Exists(launcher))
-				throw new InvalidInputException($"Invalid -sdrdir value: Couldn't find 'LauncherCLI.exe' in '{sdrDirectory}'.");
-
-			// Is MultiProcess.dll enabled?
-			var extension = Path.Combine(sdrDirectory, @"Extensions\Enabled\MultiProcess.dll");
-			if (!File.Exists(extension))
-				throw new InvalidInputException($"Invalid -sdrdir value: SDR MultiProcess extension is not enabled.");
+				throw new InvalidInputException($"Invalid -sdrdir value: Couldn't find 'svr_launcher.exe' in '{sdrDirectory}'.");
 
 			SdrDirectory = sdrDirectory;
 		}
@@ -233,8 +228,8 @@ namespace RenderDemo
 			if (exePath == null)
 				throw new InvalidInputException("Invalid input: -exepath must be set.");
 
-			if (Path.GetFileName(exePath) != "hl2.exe")
-				throw new InvalidInputException("Invalid -exepath value: File name must be 'hl2.exe'.");
+			if (Path.GetFileName(exePath) != "tf_win64.exe")
+				throw new InvalidInputException("Invalid -exepath value: File name must be 'tf_win64.exe'.");
 
 			if (!File.Exists(exePath))
 				throw new InvalidInputException($"Invalid -exepath value: Couldn't find '{exePath}'.");

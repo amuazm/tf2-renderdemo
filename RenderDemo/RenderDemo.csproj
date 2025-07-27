@@ -73,7 +73,6 @@
     <Compile Include="Code\Classes\VDM.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
     <None Include="config\cfg\renderdemo\profiles\audio.cfg" />
     <None Include="config\cfg\renderdemo\profiles\video.cfg" />
     <None Include="config\cfg\renderdemo\autoexec.cfg" />

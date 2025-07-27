@@ -2,7 +2,8 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/.vs
-/RenderDemo/.vs
+*.vs
 /RenderDemo/bin/Debug
-/RenderDemo/obj
+/RenderDemo/bin/Release
+/RenderDemo/obj/Debug
+/RenderDemo/obj/Release

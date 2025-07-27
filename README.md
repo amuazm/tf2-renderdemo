@@ -1,3 +1,25 @@
+# Fork
+This is a fork of [jooonior/tf2-renderdemo](https://github.com/jooonior/tf2-renderdemo).
+- Works with latest SVR (formerly known as SDR) (tested as of Version 43)
+- Works with latest TF2 version (tested as of 28/07/2025)
+### Usage
+1. Download [SVR](https://github.com/crashfort/SourceDemoRender/releases) and extract it somewhere
+2. `git clone https://github.com/amuazm/tf2-renderdemo.git`
+3. Open `RenderDemo/RenderDemo.sln` with Visual Studio
+4. Select `Debug` in the top if not already selected
+5. `CTRL + B`
+6. Copy the folder `RenderDemo/config` as `RenderDemo/bin/Debug/config`
+7. Open a terminal in `RenderDemo/bin/Debug`
+8. Run your command (example below)
+9. Output will be in SVR's movies folder
+
+Example command:
+```
+renderdemo -exepath "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\tf_win64.exe" -demo "demos\auto_2025-05-29_17-11-08.dem" -start 17000 -end 18000 -out test.mov -launch "-width 1920 -height 1080" -cmd "spec_player YOUR_NAME_IN_THE_DEMO; spec_mode 5" -sdrdir "C:\Users\User\Downloads\svr" -loglevel debug
+```
+
+Below is the original unupdated README.md.
+
 # RenderDemo
 
 A command line tool that renders out TF2 demos using SourceDemoRender.

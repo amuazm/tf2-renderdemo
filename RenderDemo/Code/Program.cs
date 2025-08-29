@@ -23,9 +23,16 @@ namespace RenderDemo
             Logger.Message(
                 $"Demo: {Args.DemoPath}\n" +
                 $"Output: {Args.OutputPath}\n" +
-                $"Start tick: {Args.StartTick} | End tick: {Args.EndTick} | Profile: {Args.ProfileName}\n" +
-                $"Commands: \"{Args.UserCommands}\"\n",
+                $"Profile: {Args.ProfileName}\n" +
+                $"Commands: \"{Args.UserCommands}\"",
                 LogLevel.Info);
+
+            Logger.Message("Ranges: ", LogLevel.Info);
+
+            foreach (var tickRange in Args.TickRanges)
+            {
+                Logger.Message(tickRange.ToString(), LogLevel.Info);
+            }
 
             // If in test mode, pause.
             if (Args.IsTest)
@@ -35,8 +42,11 @@ namespace RenderDemo
                 Console.Write('\n');
             }
 
+            Logger.Message("Checking output file...", LogLevel.Debug);
             if (CheckOutputFile())
+            {
                 return 0;
+            }
 
             // Get a random file name, remove the dot.
             // This key will be used for temporary files/directories that belong to this instance.
@@ -46,15 +56,30 @@ namespace RenderDemo
             var tempFolderPath = $"temp\\{randomKey}";
 
             // Create a temporary copy of the demo to be recorded.
+            Logger.Message("Importing demo...", LogLevel.Debug);
+
             if (ImportDemo(tempFolderPath))
+            {
                 return 2;
+            }
 
             // Create CFGs.
+            Logger.Message("Generating CFGs...", LogLevel.Debug);
+
             if (GenerateCFGs(tempFolderPath, randomKey))
+            {
                 return 2;
+            }
+
+            Logger.Message("Generating VDMs...", LogLevel.Debug);
 
             if (GenerateVDM(tempFolderPath))
+            {
                 return 2;
+            }
+
+
+            Logger.Message("Generating SVR game launch file...", LogLevel.Debug);
             try
             {
                 File.WriteAllText(Path.Combine(Args.SdrDirectory, "data", "games", "tf2_renderdemo.ini"),
@@ -69,6 +94,7 @@ namespace RenderDemo
                 return 2;
             }
 
+            Logger.Message("Generating SVR video render profile...", LogLevel.Debug);
             try
             {
                 File.WriteAllText(Path.Combine(Args.SdrDirectory, "data", "profiles", "tf2_renderdemo_profile.ini"),
@@ -88,33 +114,47 @@ namespace RenderDemo
             {
                 // Did TF2 start?
                 if (tf2 == null)
+                {
+                    Logger.Message("TF2 was null!", LogLevel.Debug);
                     return 2;
+                }
 
                 // Sleep until there's a window to work with.
+                Logger.Message("Waiting for a window to work with...", LogLevel.Debug);
+
                 while (tf2.MainWindowHandle == IntPtr.Zero)
+                {
                     Thread.Sleep(100);
+                }
 
-                FixTF2sWindow(tf2);
+                //FixTF2sWindow(tf2);
 
-                // Waint until CFGs finish recording and/or TF2 exits.
+                // Wait until CFGs finish recording and/or TF2 exits.
+                Logger.Message("Waiting for recordings to finish and or TF2 exits...", LogLevel.Debug);
                 tf2Crashed = !HandleCFGsCommunication(tf2, randomKey);
             }
 
             try
             {
                 // Delete the console log file.
+                Logger.Message($"Deleting...${Path.Combine(Args.TfDirectory, $"renderdemo_{randomKey}.log")}", LogLevel.Debug);
                 File.Delete(Path.Combine(Args.TfDirectory, $"renderdemo_{randomKey}.log"));
 
                 // Delete temp folder.
+                Logger.Message("Deleting temp folder...", LogLevel.Debug);
                 Directory.Delete(tempFolderPath, true);
             }
             catch { }
 
             // Return
             if (tf2Crashed)
+            {
                 return 1;
+            }
             else
+            {
                 return 0;
+            }
         }
 
         /// <summary>
@@ -292,33 +332,72 @@ namespace RenderDemo
         {
             var vdm = new VDM();
 
-            // Tick 0 seemed to crash more often.
-            vdm.Add(1, $"renderdemo_load", "Demo loaded");
+            var firstStart = Args.TickRanges[0].Start;
+            vdm.Add(1, $"renderdemo_log; echo renderdemo_message=Going_to_{firstStart}\\n; renderdemo_nolog;" +
+                $"demo_gototick {firstStart}");
 
-            // Fast forward to start tick if it's not right at the beginning.
-            if (Args.StartTick > 3)
+            for (int i = 0; i < Args.TickRanges.Count; i++)
             {
-                vdm.Add(2, $"renderdemo_ff; demo_gototick {Args.StartTick - 2}", "Fast forward");
-                vdm.Add(Args.StartTick - 1, "renderdemo_prep", "Prepare recording");
+                var tickRange = Args.TickRanges[i];
+
+                vdm.Add(tickRange.Start, $"renderdemo_log; echo renderdemo_message=Recording_movie{i}\\n; renderdemo_nolog;" +
+                    $"startmovie movie{i}.mov");
+
+                string command = $"renderdemo_log; echo renderdemo_message=Ending_movie{i}\\n; renderdemo_nolog;" +
+                    $"endmovie;";
+
+                // Is there a next tickRange?
+                if (i + 1 < Args.TickRanges.Count)
+                {
+                    var nextTickRange = Args.TickRanges[i + 1];
+                    command += $"renderdemo_log; echo renderdemo_message=Going_to_{nextTickRange.Start}\\n; renderdemo_nolog;" +
+                    $"demo_gototick {nextTickRange.Start}";
+                } else
+                {
+                    command += $"renderdemo_log; echo renderdemo_message=Quitting\\n; renderdemo_nolog;" +
+                    $"quit";
+                }
+
+                vdm.Add(tickRange.End, command);
             }
 
-            // Log recording progress in 5% steps.
-            double step = (Args.EndTick - Args.StartTick) / 100.0;
+            //// Tick 0 seemed to crash more often.
+            //vdm.Add(1, $"renderdemo_load", "Demo loaded");
 
-            int lastTick = -1;
+            //// Fast forward to start tick if it's not right at the beginning.
+            //int startTick = Args.TickRanges[0].Start;
 
-            for (var i = 0; i <= 100; i++)
-            {
-                int tick = Args.StartTick + (int)(i * step);
+            //if (startTick > 3)
+            //{
+            //    vdm.Add(2, $"renderdemo_ff; " +
+            //        $"demo_gototick {startTick - 2}; " +
+            //        $"renderdemo_log; " +
+            //        $"echo renderdemo_message=[debug]_test2;" +
+            //        $"renderdemo_nolog",
+            //        "Fast forward");
+            //    vdm.Add(startTick - 1, "renderdemo_prep", "Prepare recording");
+            //}
 
-                // Avoid adding multiple entries at the same tick.
-                if (tick == lastTick)
-                    continue;
+            //// Log recording progress in 5% steps.
+            //int endTick = Args.TickRanges[0].End;
+            //double step = (endTick - startTick) / 100.0;
 
-                lastTick = tick;
+            //int lastTick = -1;
 
-                vdm.Add(tick, $"renderdemo_{i}perc", $"Recording: {i}%");
-            }
+            //for (var i = 0; i <= 100; i++)
+            //{
+            //    int tick = startTick + (int)(i * step);
+
+            //    // Avoid adding multiple entries at the same tick.
+            //    if (tick == lastTick)
+            //    {
+            //        continue;
+            //    }
+
+            //    lastTick = tick;
+
+            //    vdm.Add(tick, $"renderdemo_{i}perc", $"Recording: {i}%");
+            //}
 
             try
             {
@@ -358,21 +437,22 @@ namespace RenderDemo
                 UseShellExecute = false
             };
 
-            Logger.Message("Starting SDR laucher...", LogLevel.Brief);
+            Logger.Message($"Process start info: {sdrStartInfo}...", LogLevel.Debug);
+            Logger.Message("Launching SVR...", LogLevel.Brief);
 
             using (var sdr = Process.Start(sdrStartInfo))
             {
-                // Wait until it's done.
-                //sdr.WaitForInputIdle();
-
                 // Search for child processes.
-                ManagementObjectSearcher mos = new ManagementObjectSearcher($"Select * From Win32_Process Where ParentProcessID={sdr.Id}");
+                Logger.Message("Searching for child processes...", LogLevel.Debug);
+                ManagementObjectSearcher mos = new ManagementObjectSearcher(
+                    $"Select * From Win32_Process Where ParentProcessID={sdr.Id}");
                 ManagementObjectCollection moc;
 
                 // Wait until there is a child process.
                 do
                 {
                     moc = mos.Get();
+                    Logger.Message("Waiting for child process...", LogLevel.Debug);
                     Thread.Sleep(100);
                 }
                 while (moc.Count != 1);
@@ -380,16 +460,8 @@ namespace RenderDemo
                 var mo = new ManagementObject[1];
                 moc.CopyTo(mo, 0);
 
-                // Close SDR launcher.
-                //sdr.CloseMainWindow();
-
-                // Change previous line.
-                if (Args.LogLevel <= LogLevel.Brief)
-                    Console.SetCursorPosition(23, Console.CursorTop - 1);
-
-                Logger.Message("  TF2 has started, closed SDR launcher.", LogLevel.Brief);
-
                 // TF2 is the only child process of SDR
+                Logger.Message("Getting TF2 process...", LogLevel.Debug);
                 var tf2 = Process.GetProcessById(Convert.ToInt32(mo[0]["ProcessID"]));
 
                 return tf2;
@@ -423,9 +495,12 @@ namespace RenderDemo
         /// <returns>If CFGs were able to finish.</returns>
         private static bool HandleCFGsCommunication(Process _tf2Process, string _randomKey)
         {
+            Logger.Message($"Log file name: ${Path.Combine(Args.TfDirectory, $"renderdemo_{_randomKey}.log")}", LogLevel.Debug);
             var logPath = Path.Combine(Args.TfDirectory, $"renderdemo_{_randomKey}.log");
 
             // Wait for the log file.
+            Logger.Message("Waiting for log file to exist...", LogLevel.Debug);
+
             while (!File.Exists(logPath))
             {
                 if (_tf2Process.HasExited)
@@ -433,15 +508,20 @@ namespace RenderDemo
                     Logger.Message("TF2 crashed on launch.", LogLevel.Error, ConsoleColor.Red);
                     return false;
                 }
+
                 Thread.Sleep(100);
             }
 
+            Logger.Message("Using log file...", LogLevel.Debug);
             using (var log = new ConsoleLog(logPath))
             {
                 // If TF2 didn't crash and recording was finished.
+                Logger.Message("Parsing console log...", LogLevel.Debug);
+
                 if (!ParseConsoleLog(log, _tf2Process))
                 {
                     // Kill the process to prevent config.cfg from being updated with settings that were changed.
+                    Logger.Message("Killing TF2 process...", LogLevel.Debug);
                     _tf2Process.Kill();
                     // Return success.
                     return true;
@@ -452,7 +532,9 @@ namespace RenderDemo
 
             // Make sure cursor is at a new line.
             if (Console.CursorLeft != 0)
+            {
                 Console.Write('\n');
+            }
 
             Logger.Message("TF2 has exited before CFGs could finish. Recording might have failed.", LogLevel.Error, ConsoleColor.Red);
 
@@ -484,15 +566,18 @@ namespace RenderDemo
                 do
                 {
                     string line = consoleLog.ReadLine();
-
+                    //Logger.Message($"Found log line: {line}", LogLevel.Debug);
                     var match = Regex.Match(line, "(?<=renderdemo_message=)[^ ;:'\"]+");
 
                     if (!match.Success)
+                    {
                         continue;
+                    }
 
                     // Message signaling CFGs have finished.
                     if (match.Value == "renderdemo_quit")
                     {
+                        Logger.Message("Found \"renderdemo_quit\"", LogLevel.Debug);
                         Logger.Message("Recording finished successfully.", LogLevel.Progress, ConsoleColor.Green);
                         return false;
                     }

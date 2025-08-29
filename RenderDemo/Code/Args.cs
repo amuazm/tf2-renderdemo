@@ -51,15 +51,7 @@ namespace RenderDemo
         /// </summary>
         public static string DemoPath { get; private set; }
 
-        /// <summary>
-        /// Tick to start recording at.
-        /// </summary>
-        public static int StartTick { get; private set; }
-
-        /// <summary>
-        /// Tick to stop recording at.
-        /// </summary>
-        public static int EndTick { get; private set; }
+        public static List<TickRange> TickRanges { get; private set; } = new List<TickRange>();
 
         /// <summary>
         /// Path of the movie to be rendered.
@@ -120,8 +112,7 @@ namespace RenderDemo
             GetExePath();
             GetTfDirectory();
             GetDemoPath();
-            GetStartTick();
-            GetEndTick();
+            GetRanges();
             GetOutputPath();
             GetProfile();
             GetUserCommands();
@@ -318,61 +309,85 @@ namespace RenderDemo
         }
 
         /// <summary>
-        /// Get value for <see cref="StartTick"/> and make sure is's valid.
+        /// Represents a tick range with start and end values.
         /// </summary>
-        private static void GetStartTick()
+        public struct TickRange
         {
-            string input = GetArgValue("-start");
+            public int Start { get; set; }
+            public int End { get; set; }
 
-            // If not default tf directory.
-            if (input == null)
-                throw new InvalidInputException("Invalid input: -start must be set.");
+            public TickRange(int start, int end)
+            {
+                Start = start;
+                End = end;
+            }
 
-            if (!int.TryParse(input, out int startTick))
-                throw new InvalidInputException($"Invalid -start value: '{input}' is not an integer.");
-
-            if (startTick < 1)
-                throw new InvalidInputException("Invalid -start value: Start tick must be greater than one.");
-
-            // Must be lower than demo length.
-            if (startTick >= mDemoLength)
-                throw new InvalidInputException($"Invalid -start value: '{DemoPath}' has only {mDemoLength - 1} ticks.");
-
-            StartTick = startTick;
+            public override string ToString()
+            {
+                return $"{Start}:{End}";
+            }
         }
 
         /// <summary>
-        /// Get value for <see cref="EndTick"/> and make sure is's valid.
+        /// Get value for <see cref="StartTick"/> and make sure is's valid.
         /// </summary>
-        private static void GetEndTick()
+        private static void GetRanges()
         {
-            string input = GetArgValue("-end");
+            string input = GetArgValue("-ranges");
 
-            // If not default tf directory.
             if (input == null)
-                throw new InvalidInputException("Invalid input: -end must be set.");
-
-            int endTick;
-
-            // 'max' means stop as late as possible.
-            if (input == "max")
             {
-                endTick = mDemoLength - 1;
-            }
-            // If not a keyword, has to be a number.
-            else if (!int.TryParse(input, out endTick))
-            {
-                throw new InvalidInputException($"Invalid -end value: '{input}' is not an integer.");
+                throw new InvalidInputException("Invalid input: -ranges must be set.");
             }
 
-            if (endTick <= StartTick)
-                throw new InvalidInputException("Invalid -end value: End tick must be greater than start tick.");
+            // e.g. 1000:3000,4000:5000
+            // Split by commas
+            string[] ranges = input.Split(',');
 
-            // End tick must be lower than demo length.
-            if (endTick >= mDemoLength)
-                throw new InvalidInputException($"Invalid -end value: '{DemoPath}' has only {mDemoLength - 1} ticks.");
+            if (ranges.Length == 0)
+            {
+                throw new InvalidInputException($"Invalid -ranges value: {input} has no ranges separated by commas.");
+            }
 
-            EndTick = endTick;
+            // Parse ranges
+            for (int i = 0; i < ranges.Length; i++)
+            {
+                string range = ranges[i];
+                string[] parts = range.Split(':');
+                
+                if (parts.Length != 2)
+                {
+                    throw new InvalidInputException($"Invalid -ranges value: range '{range}' has more than 2 values.");
+                }
+
+                if (!int.TryParse(parts[0], out int startTick))
+                {
+                    throw new InvalidInputException($"Invalid -ranges value: '{parts[0]}' is not a number in '{range}'.");
+                }
+
+                if (!int.TryParse(parts[1], out int endTick))
+                {
+                    throw new InvalidInputException($"Invalid -ranges value: '{parts[1]}' is not a number in '{range}'.");
+                }
+
+                if (startTick < 1)
+                {
+                    throw new InvalidInputException($"Invalid -ranges value: Start tick '{startTick}' must be greater than one.");
+                }
+
+                // Must be lower than demo length.
+                if (startTick >= mDemoLength || endTick > mDemoLength)
+                {
+                    throw new InvalidInputException($"Invalid -ranges value: '{DemoPath}' has only {mDemoLength - 1} ticks.");
+                }
+
+                if (startTick > endTick)
+                {
+                    throw new InvalidInputException($"Invalid -ranges value: {range} has a start higher than the end.");
+                }
+
+                TickRanges.Add(new TickRange(startTick, endTick));
+            }
         }
 
         /// <summary>

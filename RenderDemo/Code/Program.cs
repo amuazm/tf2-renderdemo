@@ -24,7 +24,7 @@ namespace RenderDemo
                 $"Demo: {Args.DemoPath}\n" +
                 $"Output: {Args.OutputPath}\n" +
                 $"Profile: {Args.ProfileName}\n" +
-                $"Commands: \"{Args.UserCommands}\"\n"+
+                $"Commands: \"{Args.UserCommands}\"\n" +
                 $"OutputPath: \"{Args.OutputPath}\"",
                 LogLevel.Info);
 
@@ -349,11 +349,11 @@ namespace RenderDemo
             {
                 var tickRange = Args.TickRanges[i];
 
-                vdm.Add(tickRange.Start, GameLog($"Recording_range_{i + 1}/{Args.TickRanges.Count}") +
+                vdm.Add(tickRange.Start, GameLog($"Recording_range_{i + 1:D3}/{Args.TickRanges.Count:D3}") +
                     $"snd_restart;" +
-                    $"startmovie {Args.OutputPath}-{i + 1}.mov;");
+                    $"startmovie {Args.OutputPath}-{i + 1:D3}.mov;");
 
-                string command = GameLog($"Ending_range_{i + 1}") +
+                string command = GameLog($"Ending_range_{i + 1:D3}") +
                     $"endmovie;";
 
                 // Is there a next tickRange?
@@ -362,7 +362,8 @@ namespace RenderDemo
                     var nextTickRange = Args.TickRanges[i + 1];
                     command += GameLog($"Going_to_{nextTickRange.Start}") +
                     $"demo_gototick {nextTickRange.Start};";
-                } else
+                }
+                else
                 {
                     command += GameLog($"Quitting") +
                     $"quit;";

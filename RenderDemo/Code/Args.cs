@@ -398,35 +398,45 @@ namespace RenderDemo
             string outputPath = GetArgValue("-out");
 
             if (outputPath == null)
-                throw new InvalidInputException("Invalid input: -out must be set.");
-
-            var extension = Path.GetExtension(outputPath);
-
-            // If extension wasn't explicitly set, assume .avi.
-            if (extension == String.Empty)
             {
-                outputPath += ".avi";
-            }
-            // Is extension is valid?
-            else if (extension != ".avi" && extension != ".mp4" && extension != ".mov" && extension != ".mkv")
-            {
-                throw new InvalidInputException($"Invalid -out value: Unsupported extension '{extension}', use one of AVI, MP4, MOV, MKV.");
+                // This is more like a filename idgaf about full path
+                outputPath = Path.GetFileNameWithoutExtension(DemoPath);
             }
 
-            // If not a full path, assume it's relative to working directory.
-            try
+            outputPath = outputPath.Replace(" ", "_");
+            
+            if (outputPath.Contains("\""))
             {
-                outputPath = Path.GetFullPath(outputPath);
-            }
-            // Path had invalid characters.
-            catch (ArgumentException)
-            {
-                throw new InvalidInputException($"Invalid -out value: '{outputPath}' is not a valid file path.");
+                throw new InvalidInputException($"Invalid -out value: Contains \"");
             }
 
-            // Make sure output is not in the root of a drive (SDR requirement).
-            if (Path.GetPathRoot(outputPath) == Path.GetDirectoryName(outputPath))
-                throw new InvalidInputException($"Invalid -out value: SourceDemoRender cannot ouput to the root of a drive.");
+            //var extension = Path.GetExtension(outputPath);
+
+            //// If extension wasn't explicitly set, assume .avi.
+            //if (extension == String.Empty)
+            //{
+            //    outputPath += ".avi";
+            //}
+            //// Is extension is valid?
+            //else if (extension != ".avi" && extension != ".mp4" && extension != ".mov" && extension != ".mkv")
+            //{
+            //    throw new InvalidInputException($"Invalid -out value: Unsupported extension '{extension}', use one of AVI, MP4, MOV, MKV.");
+            //}
+
+            //// If not a full path, assume it's relative to working directory.
+            //try
+            //{
+            //    outputPath = Path.GetFullPath(outputPath);
+            //}
+            //// Path had invalid characters.
+            //catch (ArgumentException)
+            //{
+            //    throw new InvalidInputException($"Invalid -out value: '{outputPath}' is not a valid file path.");
+            //}
+
+            //// Make sure output is not in the root of a drive (SDR requirement).
+            //if (Path.GetPathRoot(outputPath) == Path.GetDirectoryName(outputPath))
+            //    throw new InvalidInputException($"Invalid -out value: SourceDemoRender cannot ouput to the root of a drive.");
 
             OutputPath = outputPath;
         }

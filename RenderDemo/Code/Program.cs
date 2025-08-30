@@ -24,7 +24,8 @@ namespace RenderDemo
                 $"Demo: {Args.DemoPath}\n" +
                 $"Output: {Args.OutputPath}\n" +
                 $"Profile: {Args.ProfileName}\n" +
-                $"Commands: \"{Args.UserCommands}\"",
+                $"Commands: \"{Args.UserCommands}\"\n"+
+                $"OutputPath: \"{Args.OutputPath}\"",
                 LogLevel.Info);
 
             Logger.Message("Ranges: ", LogLevel.Info);
@@ -324,6 +325,11 @@ namespace RenderDemo
             return false;
         }
 
+        private static string GameLog(string logMessage)
+        {
+            return $"renderdemo_log; echo renderdemo_message={logMessage}\\n; renderdemo_nolog;";
+        }
+
         /// <summary>
         /// Creates a VDM file to control the recording process.
         /// </summary>
@@ -333,29 +339,33 @@ namespace RenderDemo
             var vdm = new VDM();
 
             var firstStart = Args.TickRanges[0].Start;
-            vdm.Add(1, $"renderdemo_log; echo renderdemo_message=Going_to_{firstStart}\\n; renderdemo_nolog;" +
-                $"demo_gototick {firstStart}");
+            vdm.Add(1, GameLog($"Running_prep_and_user_commands") +
+                $"hud_reloadscheme;" +
+                $"{Args.UserCommands};");
+            vdm.Add(2, GameLog($"Going_to_{firstStart}") +
+                $"demo_gototick {firstStart};");
 
             for (int i = 0; i < Args.TickRanges.Count; i++)
             {
                 var tickRange = Args.TickRanges[i];
 
-                vdm.Add(tickRange.Start, $"renderdemo_log; echo renderdemo_message=Recording_movie{i}\\n; renderdemo_nolog;" +
-                    $"startmovie movie{i}.mov");
+                vdm.Add(tickRange.Start, GameLog($"Recording_range_{i + 1}/{Args.TickRanges.Count}") +
+                    $"snd_restart;" +
+                    $"startmovie {Args.OutputPath}-{i + 1}.mov;");
 
-                string command = $"renderdemo_log; echo renderdemo_message=Ending_movie{i}\\n; renderdemo_nolog;" +
+                string command = GameLog($"Ending_range_{i + 1}") +
                     $"endmovie;";
 
                 // Is there a next tickRange?
                 if (i + 1 < Args.TickRanges.Count)
                 {
                     var nextTickRange = Args.TickRanges[i + 1];
-                    command += $"renderdemo_log; echo renderdemo_message=Going_to_{nextTickRange.Start}\\n; renderdemo_nolog;" +
-                    $"demo_gototick {nextTickRange.Start}";
+                    command += GameLog($"Going_to_{nextTickRange.Start}") +
+                    $"demo_gototick {nextTickRange.Start};";
                 } else
                 {
-                    command += $"renderdemo_log; echo renderdemo_message=Quitting\\n; renderdemo_nolog;" +
-                    $"quit";
+                    command += GameLog($"Quitting") +
+                    $"quit;";
                 }
 
                 vdm.Add(tickRange.End, command);
@@ -495,7 +505,7 @@ namespace RenderDemo
         /// <returns>If CFGs were able to finish.</returns>
         private static bool HandleCFGsCommunication(Process _tf2Process, string _randomKey)
         {
-            Logger.Message($"Log file name: ${Path.Combine(Args.TfDirectory, $"renderdemo_{_randomKey}.log")}", LogLevel.Debug);
+            Logger.Message($"Log file name: {Path.Combine(Args.TfDirectory, $"renderdemo_{_randomKey}.log")}", LogLevel.Debug);
             var logPath = Path.Combine(Args.TfDirectory, $"renderdemo_{_randomKey}.log");
 
             // Wait for the log file.
